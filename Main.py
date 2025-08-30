@@ -10,6 +10,7 @@ class Device:
 
     def receive(self, message, sender):
         print(f"{self.name} Received message: {message} from {sender.name}")
+        
 
 class Network:
     def __init__(self, network_type):
@@ -22,18 +23,30 @@ class Network:
     
     def transmit(self, message, sender, recipient):
         print(f"Transmitting message: {message} from {sender.name} to {recipient.name} over {self.network_type} network.")
+        #break message into packets and send each packet
+        #each letter should be sent as a packet
+        messagePacket = list(message)
+        recievedPacketList = []
+        for char in messagePacket:
+            recievedPacketList.append(self.send_packet(char, sender, recipient))
+
         print(".")
         time.sleep(0.5)
         print("..")
         time.sleep(0.5)
         print("...")
         time.sleep(0.5)
-        recipient.receive(message, sender)
+        recipient.receive(''.join(recievedPacketList), sender)
+
+    def send_packet(self, char, sender, recipient):
+        if jammingEnabled and random.random() < 0.3:
+            #replace the packet with a "."
+            return "."  
+        else:
+            return char
         
 
-
-#to do: user selects network type and no. of device
-
+#main
 validNetwork = False
 while validNetwork == False:
     networkType = input("Select network type (1,2,3): ") #change later
@@ -84,9 +97,6 @@ for i in range(noOfDevices):
     userMessage = input(f"Enter a message to send from {sender.name} to {recipient.name}: ")
     sender.send(userMessage, recipient)
 
-#split the message the user sends into packets and send each packet separately
-
-#that way jamming affects the individual packets
 
 #have a loading bar of each packet being sent and recieved
 #%of packets sent and recieved out of total 
