@@ -16,10 +16,20 @@ class Network:
     def __init__(self, network_type):
         self.network_type = network_type
         self.devices = []
-        
+        self.connections = set()
+
     def add_device(self, device):
         self.devices.append(device)
         print(f"Device {device.name} added to {self.network_type} network.")
+        # Initiate SYN/ACK handshake with all existing devices
+        for other in self.devices:
+            if other is not device:
+                conn = tuple(sorted([device.name, other.name]))
+                if conn not in self.connections:
+                    print(f"{device.name} -> {other.name}: SYN")
+                    print(f"{other.name} -> {device.name}: SYN-ACK")
+                    print(f"{device.name} -> {other.name}: ACK")
+                    self.connections.add(conn)
     
     def transmit(self, message, sender, recipient):
         print(f"Transmitting message: {message} from {sender.name} to {recipient.name} over {self.network_type} network.")
@@ -28,7 +38,7 @@ class Network:
         messagePacket = list(message)
         recievedPacketList = []
         for char in messagePacket:
-            recievedPacketList.append(self.send_packet(char, sender, recipient))
+            recievedPacketList.append(self.send_packet(char, network=self))
 
         print(".")
         time.sleep(0.5)
@@ -38,18 +48,46 @@ class Network:
         time.sleep(0.5)
         recipient.receive(''.join(recievedPacketList), sender)
 
-    def send_packet(self, char, sender, recipient):
-        if jammingEnabled and random.random() < 0.3:
+    def send_packet(self, char, network):
+        #if 1: spot is selected
+        #jamming only affects a specific frequency
+        #based on network type, there are x frequencies
+        #if network 1, 100% chance of jamming, netwrok 2 33% chance, network 3 20% chance
+        if jammingEnabled and jammingType == "1":
+            if network.network_type == 1:
+                #100% chance of jamming
+                return "."
+            elif network.network_type == 2:
+                #33% chance of jamming
+                if random.random() < 0.33:
+                    return "."
+                else:
+                    return char
+            elif network.network_type == 3:
+                #20% chance of jamming
+                if random.random() < 0.2:
+                    return "."
+                else:
+                    return char
+    
+
+
+        #if 2: sweep is selected
+        if jammingEnabled and random.random() < 0.3 and jammingType == "2":
             #replace the packet with a "."
             return "."  
         else:
             return char
+
+
+        #if 3: barrage is selected
+        
         
 
 #main
 validNetwork = False
 while validNetwork == False:
-    networkType = input("Select network type (1,2,3): ") #change later
+    networkType = input("Select network type 1: 1 wavelength, 2: 3 wavelenghts 3: 5 wavelenghts. : ") #change later
     if networkType == "1":
         network = Network(1)
         validNetwork = True
@@ -68,6 +106,7 @@ noOfDevices = int(input("Enter number of devices (2 is recommended): "))
 userJamming = input("Enable jamming? (y/n): ")
 if userJamming.lower() == 'y':
     jammingEnabled = True
+    jammingType = input("Select jamming type: 1: Spot, 2: Sweep, 3: Barrage. : ")
 else:
     jammingEnabled = False
 
