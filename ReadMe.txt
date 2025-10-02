@@ -18,10 +18,14 @@ TO DO
 
 
 thoughts:
-having the user select the network type selects hoiw many frequencys the message gets 
-transmitted over or the message picks one of x frequencies. spot picks one and jams one
-in x messages sent on the frequency
-sweep could randomly jam certain letters
-barrage just jumbles the letters
+Represent the jammer as an object with power, duty cycle and position
+
+Why: Real jammers have physical constraints: transmit power (range), on/off duty cycles 
+(intermittent), and possibly location relative to devices. Modeling a jammer object lets 
+you simulate partial coverage (only devices inside radius are affected) and intermittent 
+jamming.
+
+add an option to enable packet ack
+shows that we understand how real packets are sent, 
 
 //git testing
