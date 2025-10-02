@@ -1,24 +1,32 @@
 import time
 import random
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+# --- Device and Network Classes ---
 class Device:
-    def __init__(self, name):
+    def __init__(self, name, network=None):
         self.name = name
-        
+        self.network = network
+
     def send(self, message, recipient):
-        #use the tansmit function of the network to send the message
-        network.transmit(message, self, recipient)
+        if self.network:
+            self.network.transmit(message, self, recipient)
 
     def receive(self, message, sender):
         print(f"{self.name} Received message: {message} from {sender.name}")
         
 
 class Network:
-    def __init__(self, network_type):
+    def __init__(self, network_type, jamming_enabled=False, jamming_type=None):
         self.network_type = network_type
         self.devices = []
         self.connections = set()
+        self.jamming_enabled = jamming_enabled
+        self.jamming_type = jamming_type
 
     def add_device(self, device):
+        device.network = self
         self.devices.append(device)
         print(f"Device {device.name} added to {self.network_type} network.")
         # Initiate SYN/ACK handshake with all existing devices
@@ -30,16 +38,16 @@ class Network:
                     print(f"{other.name} -> {device.name}: SYN-ACK")
                     print(f"{device.name} -> {other.name}: ACK")
                     self.connections.add(conn)
-    
+
     def transmit(self, message, sender, recipient):
         print(f"Transmitting message: {message} from {sender.name} to {recipient.name} over {self.network_type} network.")
         #break message into packets and send each packet
         #each letter should be sent as a packet
         messagePacket = list(message)
         recievedPacketList = []
-        freqSentOn = random.randint(1, self.network_type) #randomly select a frequency to jam
+        freqSentOn = random.randint(1, self.network_type)
         for char in messagePacket:
-            recievedPacketList.append(self.send_packet(char, freqSentOn, network=self))
+            recievedPacketList.append(self.send_packet(char, freqSentOn))
 
         print(".")
         time.sleep(0.5)
@@ -49,103 +57,180 @@ class Network:
         time.sleep(0.5)
         recipient.receive(''.join(recievedPacketList), sender)
 
-    def send_packet(self, char, freqSentOn, network):
+    def send_packet(self, char, freqSentOn):
         #if spot is selected and jamming is enabled it jams the selected frequency
         #if the message gets transmitted on the jammed frequency it gets replaced with a "."
         #else nothing happens to the message
-        if jammingEnabled and jammingType == "1":
+        if self.jamming_enabled and self.jamming_type == "1":
             if freqSentOn == 1:
                 return "."
             else:
                 return char
-    
+            
 
-
+        
         #if 2: sweep is selected
         #the jammer sweeps through all frequencies randomly, jamming as it goes
         #each letter is sent through as a packet on a random frequency 
-        if jammingEnabled and jammingType == "2":
-            if network.network_type == 1:
+        if self.jamming_enabled and self.jamming_type == "2":
+            if self.network_type == 1:
                 #100% chance of jamming
                 return "."
-            elif network.network_type == 2:
-                #33% chance of jamming
+            elif self.network_type == 2:
                 if random.random() < 0.33:
+                    #33% chance of jamming
                     return "."
                 else:
                     return char
-            elif network.network_type == 3:
+            elif self.network_type == 3:
                 #20% chance of jamming
                 if random.random() < 0.2:
                     return "."
                 else:
                     return char
+                
 
 
-        #if 3: barrage is selected
+        # Barrage jamming
         #all frequencies are jammed at once
-        
-        if jammingEnabled and jammingType == "3":
+        if self.jamming_enabled and self.jamming_type == "3":
             print("Session Disrupted")
-            return "."        
-        
-        
+            return "."
+        return char
 
-#main
-validNetwork = False
-while validNetwork == False:
-    networkType = input("Select network type 1: 1 wavelength, 2: 3 wavelenghts 3: 5 wavelenghts. : ") #change later
-    if networkType == "1":
-        network = Network(1)
-        validNetwork = True
-    elif networkType == "2":
-        network = Network(2)
-        validNetwork = True
-    elif networkType == "3":
-        network = Network(3)
-        validNetwork = True
-    else:
-        print("Invalid network type selected.")
+# --- GUI :sob: ---
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Network Jamming Simulator Setup")
+        self.device_entries = []
+        self.setup_main_window()
 
-noOfDevices = int(input("Enter number of devices (2 is recommended): "))
+    def setup_main_window(self):
+        frame = ttk.Frame(self.root, padding=20)
+        frame.pack()
 
-#user selects if a device will jam the network
-userJamming = input("Enable jamming? (y/n): ")
-if userJamming.lower() == 'y':
-    jammingEnabled = True
-    jammingType = input("Select jamming type: 1: Spot, 2: Sweep, 3: Barrage. : ")
-else:
-    jammingEnabled = False
+        # Network type
+        ttk.Label(frame, text="Select network type:").grid(row=0, column=0, sticky="w")
+        self.network_type = tk.StringVar(value="1")
+        ttk.Radiobutton(frame, text="1 wavelength", variable=self.network_type, value="1").grid(row=0, column=1, sticky="w")
+        ttk.Radiobutton(frame, text="3 wavelengths", variable=self.network_type, value="2").grid(row=0, column=2, sticky="w")
+        ttk.Radiobutton(frame, text="5 wavelengths", variable=self.network_type, value="3").grid(row=0, column=3, sticky="w")
 
+        #create devices based on user input
+        ttk.Label(frame, text="Number of devices:").grid(row=1, column=0, sticky="w")
+        self.num_devices = tk.IntVar(value=2)
+        num_spin = ttk.Spinbox(frame, from_=2, to=8, textvariable=self.num_devices, width=5, command=self.update_device_entries)
+        num_spin.grid(row=1, column=1, sticky="w")
 
+        #user selects if a device will jam the network
+        self.jamming_enabled = tk.BooleanVar()
+        jamming_check = ttk.Checkbutton(frame, text="Enable Jamming", variable=self.jamming_enabled, command=self.toggle_jamming_type)
+        jamming_check.grid(row=2, column=0, sticky="w")
 
-#create devices based on user input
+        # Jamming type
+        self.jamming_type = tk.StringVar(value="1")
+        self.jamming_type_frame = ttk.Frame(frame)
+        self.jamming_type_frame.grid(row=2, column=1, columnspan=3, sticky="w")
+        self.jamming_type_radios = [
+            ttk.Radiobutton(self.jamming_type_frame, text="Spot", variable=self.jamming_type, value="1"),
+            ttk.Radiobutton(self.jamming_type_frame, text="Sweep", variable=self.jamming_type, value="2"),
+            ttk.Radiobutton(self.jamming_type_frame, text="Barrage", variable=self.jamming_type, value="3")
+        ]
+        for i, radio in enumerate(self.jamming_type_radios):
+            radio.grid(row=0, column=i, sticky="w")
+        self.toggle_jamming_type()
 
-devices = []
-for i in range(noOfDevices):
-    deviceName = input(f"Enter name for Device {i+1}: ")
-    newDevice = Device(deviceName)
-    devices.append(newDevice)
-    network.add_device(newDevice)
+        # Device name entries
+        self.device_frame = ttk.Frame(frame)
+        self.device_frame.grid(row=3, column=0, columnspan=4, sticky="w", pady=(10,0))
+        self.update_device_entries()
 
-#Sending messages via devices
-#loop through devices, n sends a message to n+1
-#ask user to input each message
-#if device is the last device, it sends to the first device
-for i in range(noOfDevices):
-    if i == noOfDevices - 1:
-        sender = devices[i]
-        recipient = devices[0]
-    else:
-        sender = devices[i]
-        recipient = devices[i + 1]
+        # Submit button
+        submit_btn = ttk.Button(frame, text="Submit", command=self.submit)
+        submit_btn.grid(row=4, column=0, columnspan=4, pady=10)
+
+    def toggle_jamming_type(self):
+        state = "!disabled" if self.jamming_enabled.get() else "disabled"
+        for radio in self.jamming_type_radios:
+            radio.state([state])
+
+    def update_device_entries(self):
+        for widget in self.device_frame.winfo_children():
+            widget.destroy()
+        self.device_entries = []
+        for i in range(self.num_devices.get()):
+            ttk.Label(self.device_frame, text=f"Device {i+1} name:").grid(row=i, column=0, sticky="w")
+            entry = ttk.Entry(self.device_frame)
+            entry.grid(row=i, column=1, sticky="w")
+            entry.insert(0, f"Device{i+1}")
+            self.device_entries.append(entry)
+
+    def submit(self):
+        # Gather all options
+        try:
+            ntype = int(self.network_type.get())
+            ndev = int(self.num_devices.get())
+            names = [e.get().strip() for e in self.device_entries]
+            if len(set(names)) != ndev or any(not n for n in names):
+                raise ValueError("Device names must be unique and non-empty.")
+        except Exception as e:
+            messagebox.showerror("Input Error", str(e))
+            return
+        jam_enabled = self.jamming_enabled.get()
+        jam_type = self.jamming_type.get() if jam_enabled else None
+        self.open_sim_window(ntype, ndev, names, jam_enabled, jam_type)
+
+    def open_sim_window(self, ntype, ndev, names, jam_enabled, jam_type):
+        sim = tk.Toplevel(self.root)
+        sim.title("Network Simulation")
+        sim.geometry("700x500")
+        canvas = tk.Canvas(sim, bg="#f0f0f0", width=680, height=460)
+        canvas.pack(padx=10, pady=10)
+
+        # Place devices and jammer
+        objects = []
+        positions = [(100 + i*100, 200) for i in range(ndev)]
+        for i, (name, pos) in enumerate(zip(names, positions)):
+            obj = self.create_draggable(canvas, pos[0], pos[1], name, fill="#4a90e2")
+            objects.append(obj)
+        # Add fake jammer
+        jammer = self.create_draggable(canvas, 350, 400, "Jammer", fill="#e24a4a")
+        objects.append(jammer)
+
+        # Create network and devices for simulation logic
+        self.sim_network = Network(ntype, jam_enabled, jam_type)
+        self.sim_devices = [Device(name) for name in names]
+        for dev in self.sim_devices:
+            self.sim_network.add_device(dev)
+
+    def create_draggable(self, canvas, x, y, label, fill="#4a90e2"):
+        r = 30
+        oval = canvas.create_oval(x-r, y-r, x+r, y+r, fill=fill, outline="#222", width=2)
+        text = canvas.create_text(x, y, text=label, font=("Arial", 12, "bold"))
+        group = [oval, text]
+        def on_press(event, group=group):
+            canvas._drag_data = (group, event.x, event.y)
+        def on_drag(event, group=group):
+            g, ox, oy = canvas._drag_data
+            dx, dy = event.x - ox, event.y - oy
+            for item in g:
+                canvas.move(item, dx, dy)
+            canvas._drag_data = (g, event.x, event.y)
+        for item in group:
+            canvas.tag_bind(item, '<ButtonPress-1>', on_press)
+            canvas.tag_bind(item, '<B1-Motion>', on_drag)
+        return group
     
-    userMessage = input(f"Enter a message to send from {sender.name} to {recipient.name}: ")
-    sender.send(userMessage, recipient)
+
+    #fix devices sending messages to each other
+    #add lines running inbetween devices to show connections
+    #add a radius around the jammer to show its range
+    #if the line intersects with the jammer radius it gets jammed if jamming is enabled
 
 
-#have a loading bar of each packet being sent and recieved
-#%of packets sent and recieved out of total 
- 
-
-    
+# --- Run GUI ---
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
