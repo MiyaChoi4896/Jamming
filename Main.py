@@ -37,8 +37,9 @@ class Network:
         #each letter should be sent as a packet
         messagePacket = list(message)
         recievedPacketList = []
+        freqSentOn = random.randint(1, self.network_type) #randomly select a frequency to jam
         for char in messagePacket:
-            recievedPacketList.append(self.send_packet(char, network=self))
+            recievedPacketList.append(self.send_packet(char, freqSentOn, network=self))
 
         print(".")
         time.sleep(0.5)
@@ -48,12 +49,22 @@ class Network:
         time.sleep(0.5)
         recipient.receive(''.join(recievedPacketList), sender)
 
-    def send_packet(self, char, network):
-        #if 1: spot is selected
-        #jamming only affects a specific frequency
-        #based on network type, there are x frequencies
-        #if network 1, 100% chance of jamming, netwrok 2 33% chance, network 3 20% chance
+    def send_packet(self, char, freqSentOn, network):
+        #if spot is selected and jamming is enabled it jams the selected frequency
+        #if the message gets transmitted on the jammed frequency it gets replaced with a "."
+        #else nothing happens to the message
         if jammingEnabled and jammingType == "1":
+            if freqSentOn == 1:
+                return "."
+            else:
+                return char
+    
+
+
+        #if 2: sweep is selected
+        #the jammer sweeps through all frequencies randomly, jamming as it goes
+        #each letter is sent through as a packet on a random frequency 
+        if jammingEnabled and jammingType == "2":
             if network.network_type == 1:
                 #100% chance of jamming
                 return "."
@@ -69,18 +80,14 @@ class Network:
                     return "."
                 else:
                     return char
-    
-
-
-        #if 2: sweep is selected
-        if jammingEnabled and random.random() < 0.3 and jammingType == "2":
-            #replace the packet with a "."
-            return "."  
-        else:
-            return char
 
 
         #if 3: barrage is selected
+        #all frequencies are jammed at once
+        
+        if jammingEnabled and jammingType == "3":
+            print("Session Disrupted")
+            return "."        
         
         
 
