@@ -2,30 +2,36 @@ ReadMe
 
 //insert description of project
 
-TO DO 
-- simulate sending and recieving a message - done
-- Simulate jamming with the option to change probabilities - done
-- add a gui
-- simulate multiple devices - done
-- add visuals showing messages being sent and the jamming occuring
-- add more options to the jamming probabilities by using different networks
-- enable the devices to connect to eachtoher using ack
-- while the devices are connected they have the abilitiy to disconnect lets say 1/60 secs
+
+//insert a how to guide
+
+Done:
+user can create multiple devices
+user can choose to enable jamming
+devices send messages to eachother in the form of packets, each packet is simulated as a letter in the input text.
+if a packet is jammed it appears as a "." to the recieving device.
+3 types of jamming the user can select, spot, sweep, barrage
+added it so that each type of jamming does something different,
+spot picks one frequency and jams it
+sweep picks a random frequency each message and jams that
+barrage just straight up jams everything
+
+----Started adding a GUI -----
+added the gui for the menu, it kinda broke all the code so ill have to re add all of that network
+added a submit button that opens a new window
+- window shows the devices and another device as physical objects you can move around
+added lines between each of the devices
+added another circle as the jamming radius that attaches itself to the jammer 
 
 
-- make the network type simulate how the data gets transmitted
-- enable jamming then ask what jamming method to use
+TODO:
+add something that simulates each device sending a message to eachtother
+have a pop up saying a device has been disconnected from the network when touching the radius
+if the radius touches the line then the messages sent get jammed
+- later make it so the percentage chance to get jammed increases the more the intesection is
+- calculate the tangent of the circle, the greater the secant, the increased probability
+have a percentage bar along the line between devices showing either percentage jammed or percentage that get through
 
 
-thoughts:
-Represent the jammer as an object with power, duty cycle and position
-
-Why: Real jammers have physical constraints: transmit power (range), on/off duty cycles 
-(intermittent), and possibly location relative to devices. Modeling a jammer object lets 
-you simulate partial coverage (only devices inside radius are affected) and intermittent 
-jamming.
-
-add an option to enable packet ack
-shows that we understand how real packets are sent, 
 
 //git testing
