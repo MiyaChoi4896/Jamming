@@ -122,8 +122,8 @@ class App:
         # Network type
         ttk.Label(frame, text="Select Frequency type:").grid(row=0, column=0, sticky="w")
         self.network_type = tk.StringVar(value="1")
-        ttk.Radiobutton(frame, text="2.4", variable=self.network_type, value="1").grid(row=0, column=1, sticky="w")
-        ttk.Radiobutton(frame, text="5 GhZ", variable=self.network_type, value="2").grid(row=0, column=2, sticky="w")
+        ttk.Radiobutton(frame, text="2.4 GhZ", variable=self.network_type, value="1").grid(row=0, column=1, sticky="w")
+        ttk.Radiobutton(frame, text="5 GHz", variable=self.network_type, value="2").grid(row=0, column=2, sticky="w")
         #ttk.Radiobutton(frame, text="5 wavelengths", variable=self.network_type, value="3").grid(row=0, column=3, sticky="w")
 
         #create devices based on user input
@@ -231,7 +231,16 @@ class App:
             return
         jam_enabled = self.jamming_enabled.get()
         jam_type = self.jamming_type.get() if jam_enabled else None
-        jammer_radius = (jammer_power_val * jammer_gain_val * 10 * math.sqrt(0.125)) / math.sqrt(4 * math.pi)
+        #change the wavelength based on the input
+        wavelength_calc = 0
+        if self.network_type.get() == "1":
+            wavelength_calc = 0.125
+        else:
+            wavelength_calc = 0.06
+        #print(wavelength_calc, self.network_type.get())
+        
+        #calculate based on the formula that Rasool gave us 
+        jammer_radius = (jammer_power_val * jammer_gain_val * 10 * math.sqrt(wavelength_calc)) / math.sqrt(4 * math.pi)
         #convert it from log to linear
         print(jammer_radius)
         self.data_rate_val = data_rate_val
