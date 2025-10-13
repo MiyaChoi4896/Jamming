@@ -34,6 +34,9 @@ if the radius touches the line then the messages sent get jammed
 - subtract the distance, use that to calculate a percentage of the radius
 have a percentage bar along the line between devices showing either percentage jammed or percentage that get through
 
+#change the percentage bar to datarate in kb/s
+
+
 have a drop down that lets you send a massage from one device to another
 
 Send a message from <select device> to <select device>

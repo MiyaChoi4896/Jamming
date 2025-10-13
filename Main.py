@@ -40,6 +40,9 @@ class Network:
                     print(f"{device.name} -> {other.name}: ACK")
                     self.connections.add(conn)
 
+
+    #Frequency type has been changed to only 2, update that in the code
+
     def transmit(self, message, sender, recipient):
         print(f"Transmitting message: {message} from {sender.name} to {recipient.name} over {self.network_type} network.")
         #break message into packets and send each packet
@@ -105,6 +108,9 @@ class App:
         self.root = root
         self.root.title("Network Jamming Simulator Setup")
         self.device_entries = []
+        self.data_rate = tk.StringVar(value="100") 
+        self.jammer_power = tk.StringVar(value="1")
+        self.jammer_gain = tk.StringVar(value="1") 
         self.setup_main_window()
 
     def setup_main_window(self):
@@ -114,11 +120,11 @@ class App:
         #create buttons and text boxes here
         
         # Network type
-        ttk.Label(frame, text="Select network type:").grid(row=0, column=0, sticky="w")
+        ttk.Label(frame, text="Select Frequency type:").grid(row=0, column=0, sticky="w")
         self.network_type = tk.StringVar(value="1")
-        ttk.Radiobutton(frame, text="1 wavelength", variable=self.network_type, value="1").grid(row=0, column=1, sticky="w")
-        ttk.Radiobutton(frame, text="3 wavelengths", variable=self.network_type, value="2").grid(row=0, column=2, sticky="w")
-        ttk.Radiobutton(frame, text="5 wavelengths", variable=self.network_type, value="3").grid(row=0, column=3, sticky="w")
+        ttk.Radiobutton(frame, text="2.4", variable=self.network_type, value="1").grid(row=0, column=1, sticky="w")
+        ttk.Radiobutton(frame, text="5 GhZ", variable=self.network_type, value="2").grid(row=0, column=2, sticky="w")
+        #ttk.Radiobutton(frame, text="5 wavelengths", variable=self.network_type, value="3").grid(row=0, column=3, sticky="w")
 
         #create devices based on user input
         ttk.Label(frame, text="Number of devices:").grid(row=1, column=0, sticky="w")
@@ -130,6 +136,26 @@ class App:
         self.jamming_enabled = tk.BooleanVar()
         jamming_check = ttk.Checkbutton(frame, text="Enable Jamming", variable=self.jamming_enabled, command=self.toggle_jamming_type)
         jamming_check.grid(row=2, column=0, sticky="w")
+
+        #on one row
+        #user inputs jammer power in watts
+        ttk.Label(frame, text="Jammer power (W)").grid(row=3, column=0, sticky="w")
+        jammer_power_entry = ttk.Entry(frame, textvariable=self.jammer_power, width=5 )
+        jammer_power_entry.grid(row=3, column=1, sticky="w", pady=(10,0))
+        #jammer antenna gain in dB 
+        ttk.Label(frame, text="Jammer Gain (dB)").grid(row=3, column=2, sticky="w")
+        jammer_gain_entry = ttk.Entry(frame, textvariable=self.jammer_gain, width=5 )
+        jammer_gain_entry.grid(row=3, column=3, sticky="w", pady=(10,0))
+        #R is calculated just of distance from the line (closest)
+        #convert log to linar, this all replaces the jammer intencity slider
+
+
+
+        #user inputs Data Rate
+        ttk.Label(frame, text="Data Rate kb/s").grid(row=4, column=0, sticky="w")
+        data_rate_entry = ttk.Entry(frame, textvariable=self.data_rate, width=5 )
+        data_rate_entry.grid(row=4, column=1, sticky="w", pady=(10,0))
+        #data rate reduces based on intercestion
 
         # Jamming type
         self.jamming_type = tk.StringVar(value="1")
@@ -146,20 +172,28 @@ class App:
 
         # Device name entries
         self.device_frame = ttk.Frame(frame)
-        self.device_frame.grid(row=3, column=0, columnspan=4, sticky="w", pady=(10,0))
+        self.device_frame.grid(row=5, column=0, columnspan=4, sticky="w", pady=(10,0))
         self.update_device_entries()
 
         # Jammer radius slider
-        ttk.Label(frame, text="Jammer Intensity").grid(row=4, column=0, sticky="w")
+        ttk.Label(frame, text="Jammer Intensity").grid(row=6, column=0, sticky="w")
         self.jammer_radius = tk.IntVar(value=100)
         self.radius_slider = ttk.Scale(frame, from_=30, to=300, orient="horizontal", variable=self.jammer_radius)
-        self.radius_slider.grid(row=4, column=1, columnspan=2, sticky="we")
+        self.radius_slider.grid(row=6, column=1, columnspan=2, sticky="we")
         self.radius_value_label = ttk.Label(frame, textvariable=self.jammer_radius)
-        self.radius_value_label.grid(row=4, column=3, sticky="w")
+        self.radius_value_label.grid(row=6, column=3, sticky="w")
+
+        #Beam width
+        ttk.Label(frame, text="Antenna Beamwidth").grid(row=7, column=0, sticky="w")
+        self.beam_width = tk.IntVar(value=90)
+        self.radius_slider = ttk.Scale(frame, from_=0, to=360, orient="horizontal", variable=self.beam_width)
+        self.radius_slider.grid(row=7, column=1, columnspan=2, sticky="we")
+        self.radius_value_label = ttk.Label(frame, textvariable=self.beam_width)
+        self.radius_value_label.grid(row=7, column=3, sticky="w")
 
         # Submit button
         submit_btn = ttk.Button(frame, text="Submit", command=self.submit)
-        submit_btn.grid(row=5, column=0, columnspan=4, pady=10)
+        submit_btn.grid(row=8, column=0, columnspan=4, pady=10)
 
 
     #get the jamming type or if its enabled/disabled
@@ -188,12 +222,18 @@ class App:
             names = [e.get().strip() for e in self.device_entries]
             if len(set(names)) != ndev or any(not n for n in names):
                 raise ValueError("Device names must be unique and non-empty.")
+            data_rate_val = float(self.data_rate.get())
+            jammer_power_val = float(self.jammer_power.get())
+            jammer_gain_val = float(self.jammer_gain.get())
         except Exception as e:
             messagebox.showerror("Input Error", str(e))
             return
         jam_enabled = self.jamming_enabled.get()
         jam_type = self.jamming_type.get() if jam_enabled else None
         jammer_radius = self.jammer_radius.get()
+        self.data_rate_val = data_rate_val
+        self.jammer_power_val = jammer_power_val
+        self.jammer_gain_val = jammer_gain_val
         self.open_sim_window(ntype, ndev, names, jam_enabled, jam_type, jammer_radius)
 
     #make the sim window
@@ -215,16 +255,21 @@ class App:
         # Draw jammer with radius
         self.jammer_obj = self.create_draggable(canvas, 350, 400, "Jammer", fill="#e24a4a", update_callback=self.update_jammer_radius)
         self.jammer_radius_val = jammer_radius
-        self.jammer_radius_circle = self.draw_jammer_radius(canvas, 350, 400, jammer_radius)
+        self.jammer_radius_circle = self.draw_jammer_radius(canvas, 350, 400, self.beam_width.get(), self.jammer_radius_val)
         self.sim_canvas = canvas
 
         # Draw lines between devices (fully connected)
         self.canvas = canvas
-        self.device_lines = []  # Store (i, j, line_id)
+        self.device_lines = []
         self.draw_lines_between_devices()
-    def draw_jammer_radius(self, canvas, x, y, radius):
-        # Draw a translucent circle around the jammer
-        return canvas.create_oval(x-radius, y-radius, x+radius, y+radius, outline="#e24a4a", width=2, dash=(4,2))
+
+    def draw_jammer_radius(self, canvas, x, y, arcAngle, radius):
+        # Draw an arc representing the jammer's beam
+        start_angle = -arcAngle/2
+        extent_angle = arcAngle
+        # create_arc
+        return canvas.create_arc(x-radius, y-radius, x+radius, y+radius, start=90+start_angle, extent=extent_angle,outline="#e24a4a", width=2, style=tk.ARC)
+
 
     def get_jammer_center(self):
         # Get the center of the jammer oval
@@ -235,10 +280,12 @@ class App:
         return x, y
 
     def update_jammer_radius(self):
-        # Move the radius circle with the jammer
+        # Move the arc with the jammer and update its angle
         x, y = self.get_jammer_center()
-        r = self.jammer_radius_val
+        r = self.jammer_radius.get()
+        arcAngle = self.beam_width.get()
         self.sim_canvas.coords(self.jammer_radius_circle, x-r, y-r, x+r, y+r)
+        self.sim_canvas.itemconfig(self.jammer_radius_circle, start=90-arcAngle/2, extent=arcAngle)
         self.update_lines()
 
 
@@ -257,7 +304,7 @@ class App:
                 line_id = self.canvas.create_line(x1, y1, x2, y2, fill="#888", width=2, tags="devline")
                 # Calculate midpoint for label
                 mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-                label_id = self.canvas.create_text(mx, my, text="100%", font=("Arial", 10, "bold"), tags="percentlabel")
+                label_id = self.canvas.create_text(mx, my, text=self.data_rate_val, font=("Arial", 10, "bold"), tags="percentlabel")
                 # Intersection check
                 if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val):
                     print("touching")
