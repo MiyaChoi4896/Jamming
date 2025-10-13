@@ -253,10 +253,11 @@ class App:
             self.device_positions.append([pos[0], pos[1]])
         # Add fake jammer (not connected by lines)
         # Draw jammer with radius
-        self.jammer_obj = self.create_draggable(canvas, 350, 400, "Jammer", fill="#e24a4a", update_callback=self.update_jammer_radius)
-        self.jammer_radius_val = jammer_radius
-        self.jammer_radius_circle = self.draw_jammer_radius(canvas, 350, 400, self.beam_width.get(), self.jammer_radius_val)
-        self.sim_canvas = canvas
+        if self.jamming_enabled.get():
+            self.jammer_obj = self.create_draggable(canvas, 350, 400, "Jammer", fill="#e24a4a", update_callback=self.update_jammer_radius)
+            self.jammer_radius_val = jammer_radius
+            self.jammer_radius_circle = self.draw_jammer_radius(canvas, 350, 400, self.beam_width.get(), self.jammer_radius_val)
+            self.sim_canvas = canvas
 
         # Draw lines between devices (fully connected)
         self.canvas = canvas
