@@ -140,14 +140,15 @@ class App:
         #on one row
         #user inputs jammer power in watts
         ttk.Label(frame, text="Jammer power (W)").grid(row=3, column=0, sticky="w")
+        self.jammer_power = tk.IntVar(value=10)
         jammer_power_entry = ttk.Entry(frame, textvariable=self.jammer_power, width=5 )
         jammer_power_entry.grid(row=3, column=1, sticky="w", pady=(10,0))
         #jammer antenna gain in dB 
         ttk.Label(frame, text="Jammer Gain (dB)").grid(row=3, column=2, sticky="w")
+        self.jammer_gain = tk.IntVar(value=10)
         jammer_gain_entry = ttk.Entry(frame, textvariable=self.jammer_gain, width=5 )
         jammer_gain_entry.grid(row=3, column=3, sticky="w", pady=(10,0))
         #R is calculated just of distance from the line (closest)
-        #convert log to linar, this all replaces the jammer intencity slider
 
 
 
@@ -175,13 +176,13 @@ class App:
         self.device_frame.grid(row=5, column=0, columnspan=4, sticky="w", pady=(10,0))
         self.update_device_entries()
 
-        # Jammer radius slider
-        ttk.Label(frame, text="Jammer Intensity").grid(row=6, column=0, sticky="w")
-        self.jammer_radius = tk.IntVar(value=100)
-        self.radius_slider = ttk.Scale(frame, from_=30, to=300, orient="horizontal", variable=self.jammer_radius)
-        self.radius_slider.grid(row=6, column=1, columnspan=2, sticky="we")
-        self.radius_value_label = ttk.Label(frame, textvariable=self.jammer_radius)
-        self.radius_value_label.grid(row=6, column=3, sticky="w")
+        # Jammer radius slider NEED TO REMOVE THIS
+        #ttk.Label(frame, text="Jammer Intensity").grid(row=6, column=0, sticky="w")
+        #self.jammer_radius = tk.IntVar(value=100)
+        #self.radius_slider = ttk.Scale(frame, from_=30, to=300, orient="horizontal", variable=self.jammer_radius)
+        #self.radius_slider.grid(row=6, column=1, columnspan=2, sticky="we")
+        #self.radius_value_label = ttk.Label(frame, textvariable=self.jammer_radius)
+        #self.radius_value_label.grid(row=6, column=3, sticky="w")
 
         #Beam width
         ttk.Label(frame, text="Antenna Beamwidth").grid(row=7, column=0, sticky="w")
@@ -230,7 +231,9 @@ class App:
             return
         jam_enabled = self.jamming_enabled.get()
         jam_type = self.jamming_type.get() if jam_enabled else None
-        jammer_radius = self.jammer_radius.get()
+        jammer_radius = (jammer_power_val * jammer_gain_val * 10 * math.sqrt(0.125)) / math.sqrt(4 * math.pi)
+        #convert it from log to linear
+        print(jammer_radius)
         self.data_rate_val = data_rate_val
         self.jammer_power_val = jammer_power_val
         self.jammer_gain_val = jammer_gain_val
@@ -253,16 +256,18 @@ class App:
             self.device_positions.append([pos[0], pos[1]])
         # Add fake jammer (not connected by lines)
         # Draw jammer with radius
-        if self.jamming_enabled.get():
+        if jam_enabled:
             self.jammer_obj = self.create_draggable(canvas, 350, 400, "Jammer", fill="#e24a4a", update_callback=self.update_jammer_radius)
             self.jammer_radius_val = jammer_radius
             self.jammer_radius_circle = self.draw_jammer_radius(canvas, 350, 400, self.beam_width.get(), self.jammer_radius_val)
+            #self.arc_lines = self.draw_arc_lines(canvas, *self.get_jammer_center(), self.beam_width.get(), self.jammer_radius_val)
             self.sim_canvas = canvas
 
         # Draw lines between devices (fully connected)
         self.canvas = canvas
         self.device_lines = []
         self.draw_lines_between_devices()
+        #self.draw_arc_lines()
 
     def draw_jammer_radius(self, canvas, x, y, arcAngle, radius):
         # Draw an arc representing the jammer's beam
@@ -283,11 +288,12 @@ class App:
     def update_jammer_radius(self):
         # Move the arc with the jammer and update its angle
         x, y = self.get_jammer_center()
-        r = self.jammer_radius.get()
+        r = self.jammer_radius_val
         arcAngle = self.beam_width.get()
         self.sim_canvas.coords(self.jammer_radius_circle, x-r, y-r, x+r, y+r)
         self.sim_canvas.itemconfig(self.jammer_radius_circle, start=90-arcAngle/2, extent=arcAngle)
         self.update_lines()
+        self.update_arc_lines()
 
 
     def draw_lines_between_devices(self):
@@ -307,7 +313,7 @@ class App:
                 mx, my = (x1 + x2) / 2, (y1 + y2) / 2
                 label_id = self.canvas.create_text(mx, my, text=self.data_rate_val, font=("Arial", 10, "bold"), tags="percentlabel")
                 # Intersection check
-                if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val):
+                if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get()):
                     print("touching")
                 #xj, yj = self.get_jammer_center()
                 #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
@@ -329,6 +335,32 @@ class App:
         self.canvas.tag_lower("devline")
         self.canvas.tag_lower("percentlabel")
 
+    def draw_arc_lines(self, canvas, x, y, arcAngle, radius):
+        # Draw lines from the ends of the arc to the jammer
+        start_angle = -arcAngle/2
+        end_angle = arcAngle/2
+
+        x1 = x + radius * math.sin(math.radians(start_angle))
+        y1 = y - radius * math.cos(math.radians(start_angle))
+        x2 = x + radius * math.sin(math.radians(end_angle))
+        y2 = y - radius * math.cos(math.radians(end_angle))
+
+        line1 = canvas.create_line(x, y, x1, y1, fill="#e24a4a", width=2)
+        line2 = canvas.create_line(x, y, x2, y2, fill="#e24a4a", width=2)
+        self.canvas.tag_lower(line1)
+        self.canvas.tag_lower(line2)
+        return line1, line2
+
+    def update_arc_lines(self):
+        # Redraw lines from the ends of the arc to the jammer
+        if hasattr(self, 'arc_lines'):
+            for line in self.arc_lines:
+                self.sim_canvas.delete(line)
+        x, y = self.get_jammer_center()
+        arcAngle = self.beam_width.get()
+        radius = self.jammer_radius_val
+        self.arc_lines = self.draw_arc_lines(self.sim_canvas, x, y, arcAngle, radius)
+
     def get_device_center(self, idx):
         # Get the center of the oval for device idx
         group, _ = self.device_objs[idx]
@@ -348,8 +380,8 @@ class App:
             self.canvas.coords(label_id, mx, my)
             
             # Intersection check
-            if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val):
-                print("touching" + str(y1))
+            print(self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get()))
+
 
             #xj, yj = self.get_jammer_center()
             #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
@@ -371,21 +403,72 @@ class App:
         self.canvas.tag_lower("devline")
         self.canvas.tag_lower("percentlabel")
 
-    def intersection_check(self, x1, y1, x2, y2, xj, yj, rj):
-        # Check if line (x1,y1)-(x2,y2) intersects circle (xj,yj,rj)
+    def intersection_check(self, x1, y1, x2, y2, xj, yj, rj, arc_angle):
+        # Check if line (x1,y1)-(x2,y2) intersects the arc and return a percentage of the line inside the arc as a decimal
         dx, dy = x2 - x1, y2 - y1
         fx, fy = x1 - xj, y1 - yj
         a = dx*dx + dy*dy
         b = 2 * (fx*dx + fy*dy)
         c = fx*fx + fy*fy - rj*rj
         discriminant = b*b - 4*a*c
+        points = []
+        # Endpoints
+        endpoints = [(x1, y1), (x2, y2)]
+        # Helper: is a point inside the arc sector?
+        def angle_in_arc(px, py):
+            angle = math.degrees(math.atan2(py - yj, px - xj))
+            angle = (angle + 360) % 360
+            start_angle = (270 - arc_angle/2) % 360
+            end_angle = (270 + arc_angle/2) % 360
+            if start_angle < end_angle:
+                return start_angle <= angle <= end_angle
+            else:
+                return angle >= start_angle or angle <= end_angle
+        # Find intersection points with the circle
         if discriminant >= 0 and a != 0:
             sqrt_disc = math.sqrt(discriminant)
             t1 = (-b - sqrt_disc) / (2*a)
             t2 = (-b + sqrt_disc) / (2*a)
-            t_candidates = [t for t in [t1, t2] if 0 <= t <= 1]
-            return bool(t_candidates)
-        return False
+            for t in [t1, t2]:
+                if 0 <= t <= 1:
+                    px = x1 + t*dx
+                    py = y1 + t*dy
+                    points.append((px, py))
+        # Collect all relevant points: endpoints inside the circle & arc, and intersection points inside arc
+        relevant_points = []
+        for px, py in endpoints + points:
+            dist = math.hypot(px - xj, py - yj)
+            if dist <= rj and angle_in_arc(px, py):
+                relevant_points.append((px, py))
+        # If no relevant points, check if the whole line is inside the arc sector and circle
+        if not relevant_points:
+            # Check midpoint
+            mx, my = (x1 + x2)/2, (y1 + y2)/2
+            dist_mid = math.hypot(mx - xj, my - yj)
+            if dist_mid <= rj and angle_in_arc(mx, my):
+                return 1.0
+            return 0.0
+        # Sort points along the line
+        relevant_points.sort(key=lambda p: math.hypot(p[0]-x1, p[1]-y1))
+        # If only one relevant point, check which endpoint is inside
+        if len(relevant_points) == 1:
+            # Find closest endpoint inside arc & circle
+            for px, py in endpoints:
+                dist = math.hypot(px - xj, py - yj)
+                if dist <= rj and angle_in_arc(px, py):
+                    seg_len = math.hypot(px - relevant_points[0][0], py - relevant_points[0][1])
+                    total_len = math.hypot(dx, dy)
+                    return seg_len / total_len if total_len != 0 else 0.0
+            return 0.0
+        # If two or more relevant points, sum up the segments inside
+        total_inside = 0.0
+        for i in range(0, len(relevant_points)-1, 2):
+            seg_len = math.hypot(relevant_points[i+1][0] - relevant_points[i][0],
+                             relevant_points[i+1][1] - relevant_points[i][1])
+            total_inside += seg_len
+        total_len = math.hypot(dx, dy)
+        return total_inside / total_len if total_len != 0 else 0.0
+        
 
     def create_draggable(self, canvas, x, y, label, fill="#4a90e2", update_callback=None):
         r = 30
