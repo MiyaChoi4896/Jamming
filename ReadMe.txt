@@ -30,8 +30,15 @@ have a pop up saying a device has been disconnected from the network when touchi
 if the radius touches the line then the messages sent get jammed
 - later make it so the percentage chance to get jammed increases the more the intesection is
 - calculate the tangent of the circle, the greater the secant, the increased probability
+- find the points at which the line intersecs the circle
+- subtract the distance, use that to calculate a percentage of the radius
 have a percentage bar along the line between devices showing either percentage jammed or percentage that get through
 
+have a drop down that lets you send a massage from one device to another
+
+Send a message from <select device> to <select device>
+<textbox>
+<output> recived by <device
 
 
 //git testing

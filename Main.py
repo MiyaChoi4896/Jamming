@@ -1,11 +1,12 @@
 import time
+import math
 import random
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 # --- Device and Network Classes ---
 class Device:
-    def __init__(self, name, network=None):
+    def __init__(self, name, network):
         self.name = name
         self.network = network
 
@@ -238,23 +239,47 @@ class App:
         x, y = self.get_jammer_center()
         r = self.jammer_radius_val
         self.sim_canvas.coords(self.jammer_radius_circle, x-r, y-r, x+r, y+r)
+        self.update_lines()
 
 
     def draw_lines_between_devices(self):
-        # Remove old lines
-        for _, _, line_id in getattr(self, 'device_lines', []):
+        # Remove old lines and percentage labels
+        for _, _, line_id, label_id in getattr(self, 'device_lines', []):
             self.canvas.delete(line_id)
+            self.canvas.delete(label_id)
         self.device_lines = []
         n = len(self.device_objs)
-        # Draw lines between every pair (i < j)
+        # Draw lines and percentage labels between every pair (i < j)
         for i in range(n):
             x1, y1 = self.get_device_center(i)
             for j in range(i+1, n):
                 x2, y2 = self.get_device_center(j)
                 line_id = self.canvas.create_line(x1, y1, x2, y2, fill="#888", width=2, tags="devline")
-                self.device_lines.append((i, j, line_id))
-        # Ensure lines are behind device ovals
+                # Calculate midpoint for label
+                mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+                label_id = self.canvas.create_text(mx, my, text="100%", font=("Arial", 10, "bold"), tags="percentlabel")
+                # Intersection check
+                if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val):
+                    print("touching")
+                #xj, yj = self.get_jammer_center()
+                #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
+                #dx, dy = x2 - x1, y2 - y1
+                #fx, fy = x1 - xj, y1 - yj
+                #a = dx*dx + dy*dy
+                #b = 2 * (fx*dx + fy*dy)
+                #c = fx*fx + fy*fy - rj*rj
+                #discriminant = b*b - 4*a*c
+                #if discriminant >= 0 and a != 0:
+                #    sqrt_disc = math.sqrt(discriminant)
+                #    t1 = (-b - sqrt_disc) / (2*a)
+                #    t2 = (-b + sqrt_disc) / (2*a)
+                #    t_candidates = [t for t in [t1, t2] if 0 <= t <= 1]
+                #    if t_candidates:
+                #        print("touching")
+                self.device_lines.append((i, j, line_id, label_id))
+        # Ensure lines and labels are behind device ovals
         self.canvas.tag_lower("devline")
+        self.canvas.tag_lower("percentlabel")
 
     def get_device_center(self, idx):
         # Get the center of the oval for device idx
@@ -266,13 +291,53 @@ class App:
         return x, y
 
     def update_lines(self):
-        # Redraw all device lines
-        for i, j, line_id in self.device_lines:
+        # Redraw all device lines and move percentage labels
+        for i, j, line_id, label_id in self.device_lines:
             x1, y1 = self.get_device_center(i)
             x2, y2 = self.get_device_center(j)
             self.canvas.coords(line_id, x1, y1, x2, y2)
-        # Keep lines behind device ovals after dragging
+            mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+            self.canvas.coords(label_id, mx, my)
+            
+            # Intersection check
+            if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val):
+                print("touching" + str(y1))
+
+            #xj, yj = self.get_jammer_center()
+            #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
+            #dx, dy = x2 - x1, y2 - y1
+            #fx, fy = x1 - xj, y1 - yj
+            #a = dx*dx + dy*dy
+            #b = 2 * (fx*dx + fy*dy)
+            #c = fx*fx + fy*fy - rj*rj
+            #discriminant = b*b - 4*a*c
+            #if discriminant >= 0 and a != 0:
+            #    sqrt_disc = math.sqrt(discriminant)
+            #    t1 = (-b - sqrt_disc) / (2*a)
+            #    t2 = (-b + sqrt_disc) / (2*a)
+            #    t_candidates = [t for t in [t1, t2] if 0 <= t <= 1]
+            #    if t_candidates:
+            #        print("touching")
+            
+        # Keep lines and labels behind devices after dragging
         self.canvas.tag_lower("devline")
+        self.canvas.tag_lower("percentlabel")
+
+    def intersection_check(self, x1, y1, x2, y2, xj, yj, rj):
+        # Check if line (x1,y1)-(x2,y2) intersects circle (xj,yj,rj)
+        dx, dy = x2 - x1, y2 - y1
+        fx, fy = x1 - xj, y1 - yj
+        a = dx*dx + dy*dy
+        b = 2 * (fx*dx + fy*dy)
+        c = fx*fx + fy*fy - rj*rj
+        discriminant = b*b - 4*a*c
+        if discriminant >= 0 and a != 0:
+            sqrt_disc = math.sqrt(discriminant)
+            t1 = (-b - sqrt_disc) / (2*a)
+            t2 = (-b + sqrt_disc) / (2*a)
+            t_candidates = [t for t in [t1, t2] if 0 <= t <= 1]
+            return bool(t_candidates)
+        return False
 
     def create_draggable(self, canvas, x, y, label, fill="#4a90e2", update_callback=None):
         r = 30
@@ -297,6 +362,6 @@ class App:
 
 # --- Run GUI ---
 if __name__ == "__main__":
-    root = tk.Tk() #make main window
+    root = tk.Tk() #make main window, tell the code to use tk
     app = App(root) #also make main window
     root.mainloop()
