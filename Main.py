@@ -320,10 +320,10 @@ class App:
                 line_id = self.canvas.create_line(x1, y1, x2, y2, fill="#888", width=2, tags="devline")
                 # Calculate midpoint for label
                 mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-                label_id = self.canvas.create_text(mx, my, text=self.data_rate_val, font=("Arial", 10, "bold"), tags="percentlabel")
-                # Intersection check
-                if self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get()):
-                    print("touching")
+                frac = self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get())
+                adjusted_rate = self.data_rate_val * (1 - frac)  # less data rate when more of line is jammed
+                label_text = f"{adjusted_rate:.1f} kb/s"
+                label_id = self.canvas.create_text(mx, my, text=label_text, font=("Arial", 10, "bold"), tags="percentlabel")
                 #xj, yj = self.get_jammer_center()
                 #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
                 #dx, dy = x2 - x1, y2 - y1
@@ -389,8 +389,9 @@ class App:
             self.canvas.coords(label_id, mx, my)
             
             # Intersection check
-            print(self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get()))
-
+            frac = self.intersection_check(x1, y1, x2, y2, *self.get_jammer_center(), self.jammer_radius_val, self.beam_width.get())
+            adjusted_rate = self.data_rate_val * (1 - frac)
+            self.canvas.itemconfig(label_id, text=f"{adjusted_rate:.1f} kb/s")
 
             #xj, yj = self.get_jammer_center()
             #rj = self.jammer_radius.get() if hasattr(self, 'jammer_radius') else getattr(self, 'jammer_radius_val', 100)
